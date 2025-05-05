@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SyncChess - Simultaneous-Move Chess</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="home-container">
+    <h1 class="logo">SyncChess</h1>
+    <div class="tagline">A Chess Variant with Simultaneous Moves</div>
+    
+    <div class="game-options">
+      <div class="option-card">
+        <h2>Create a New Game</h2>
+        <div class="option-form">
+          <select id="time-control-select" class="option-input">
+            <option value="60">1 minute</option>
+            <option value="180">3 minutes</option>
+            <option value="300" selected>5 minutes</option>
+            <option value="600">10 minutes</option>
+            <option value="900">15 minutes</option>
+            <option value="1800">30 minutes</option>
+            <option value="3600">60 minutes</option>
+            <option value="0">No time limit</option>
+          </select>
+          <button id="create-game-btn" class="cta-button">Create New Game</button>
+        </div>
+      </div>
+      
+      <div class="option-card">
+        <h2>Join an Existing Game</h2>
+        <div class="option-form">
+          <input type="text" id="room-input" placeholder="Enter room code" class="option-input">
+          <button id="join-game-btn" class="cta-button">Join Game</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="about-section">
+      <h2>About SyncChess</h2>
+      <p>SyncChess is an innovative chess variant where both players make their moves simultaneously, creating a unique strategic experience:</p>
+      <ul>
+        <li><strong>Simultaneous Moves:</strong> Both players plan and submit their moves at the same time</li>
+        <li><strong>No Repeating Pieces:</strong> Can't move the same piece twice in a row (with exceptions)</li>
+        <li><strong>"Swerving" Rule:</strong> Special capture mechanics when pieces try to avoid capture</li>
+        <li><strong>Collision Rule:</strong> When pieces move to the same square, both are removed</li>
+        <li><strong>All Standard Chess Moves:</strong> Including castling, en passant, and more</li>
+      </ul>
+      <p>Test your prediction skills and chess knowledge in this exciting variant!</p>
+      <center><button id="learn-more-btn" class="cta-button">Learn the Rules</button></center>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Create a new game
+      document.getElementById('create-game-btn').addEventListener('click', () => {
+        const timeControl = document.getElementById('time-control-select').value;
+        // Generate a random room ID (6 characters)
+        const roomId = Array(6).fill()
+          .map(() => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)])
+          .join('');
+        // Redirect to game page with room ID and time control
+        window.location.href = `game?room=${roomId}&timeControl=${timeControl}`;
+      });
+      
+      // Join an existing game
+      document.getElementById('join-game-btn').addEventListener('click', () => {
+        const roomId = document.getElementById('room-input').value.trim();
+        if (roomId) {
+          window.location.href = `game?room=${roomId}`;
+        } else {
+          alert('Please enter a room code');
+        }
+      });
+      
+      // Learn more button
+      document.getElementById('learn-more-btn').addEventListener('click', () => {
+        // Show rules on the game page
+        window.location.href = 'game?rules=show';
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SyncChess - Simultaneous-Move Chess</title>
+  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>SyncChess</h1>
+      <div class="subtitle">A Simultaneous-Move Chess Variant</div>
+    </header>
+    
+    <div class="room-info">
+      Room: <span id="room-id" class="room-id">loading...</span>
+      <button id="copy-btn" class="small-btn">Copy Link</button>
+      <div class="help-tip">Share this link with your opponent to play</div>
+    </div>
+    
+    <div class="game-area">
+      <div class="board-container">
+        <div class="check-indicator" id="check-indicator">
+          <div class="check-text">CHECK!</div>
+        </div>
+        <div id="board"></div>
+      </div>
+      
+      <div class="game-info">
+        <div class="info-panel">
+          <h2>Players</h2>
+          <div class="player-info white" id="player-white">
+            <div class="player-status">
+              <div class="player-name">White</div>
+              <div id="white-status" class="player-state">Waiting...</div>
+            </div>
+            <div id="white-timer" class="timer">5:00</div>
+          </div>
+          
+          <div class="player-info black" id="player-black">
+            <div class="player-status">
+              <div class="player-name">Black</div>
+              <div id="black-status" class="player-state">Waiting...</div>
+            </div>
+            <div id="black-timer" class="timer">5:00</div>
+          </div>
+        </div>
+        
+        <!-- Game Settings (hidden by default) -->
+        <div class="info-panel settings-panel" id="settings-panel" style="display: none;">
+          <h2>Game Settings</h2>
+          
+          <div class="setting-control">
+            <label for="time-control">Time Control:</label>
+            <select id="time-control" class="setting-select">
+              <option value="60">1 minute</option>
+              <option value="180">3 minutes</option>
+              <option value="300" selected>5 minutes</option>
+              <option value="600">10 minutes</option>
+              <option value="900">15 minutes</option>
+              <option value="1800">30 minutes</option>
+              <option value="3600">60 minutes</option>
+              <option value="0">No time limit</option>
+            </select>
+          </div>
+          
+          <div class="setting-control">
+            <label for="sound-toggle">Sound Effects:</label>
+            <button id="sound-toggle" class="setting-btn">Sound On</button>
+          </div>
+          
+          <div class="setting-control">
+            <button id="apply-settings" class="setting-btn">Apply Settings</button>
+            <div class="help-tip">Settings can only be changed before the game starts</div>
+          </div>
+        </div>
+        
+        <div class="info-panel">
+          <div id="status">Waiting for both players to join...</div>
+          <div id="game-result" style="display: none;"></div>
+        </div>
+        
+        <div class="controls">
+          <button id="submitBtn" disabled>Submit Move</button>
+          <button id="resetBtn">Reset</button>
+          <button id="settings-btn">Settings</button>
+          <button id="rules-btn">Rules</button>
+          <button id="new-game-btn">New Game</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="rules-section">
+      <div id="rules-content" class="rules" style="display: none;">
+        <h2>SyncChess Rules</h2>
+        
+        <h3>Core Rules</h3>
+        <ol>
+          <li><strong>Simultaneous Moves</strong>
+            <ul>
+              <li>Both players submit their moves at the same time.</li>
+              <li>There are no turns; each round consists of one move per player, executed simultaneously.</li>
+            </ul>
+          </li>
+          <li><strong>No Repeating the Same Piece</strong>
+            <ul>
+              <li>A piece cannot be moved two turns in a row.</li>
+              <li>Exception: the king can move multiple times in a row if it is in check or there are no other legal moves.</li>
+            </ul>
+          </li>
+          <li><strong>"Swerving" Rule (Special Capture Rule)</strong>
+            <ul>
+              <li>If a piece tries to capture an enemy piece, but that piece moves away in the same turn, no capture occurs.</li>
+              <li>Both pieces simply move to their new destinations as if nothing happened.</li>
+            </ul>
+          </li>
+          <li><strong>Collision Rule</strong>
+            <ul>
+              <li>If two pieces move to the same square at the same time, both are removed from the board.</li>
+            </ul>
+          </li>
+        </ol>
+        
+        <h3>Check & Checkmate</h3>
+        <ul>
+          <li>A king cannot move into a square that is already under threat at the start of the turn (classic illegal move).</li>
+          <li>However, if a king ends up in check due to the opponent's simultaneous move, that's allowed.</li>
+          <li>If a player is in check, they must get out of it on their next move.</li>
+          <li>If both kings are in check at the same time, both players must escape check next turn.</li>
+          <li>If a player delivers checkmate, the game ends immediately, even if that player also ends up in check on the same turn.</li>
+          <li>If both players deliver checkmate at the same time, the game ends in a draw.</li>
+        </ul>
+        
+        <h3>Special Moves</h3>
+        <ul>
+          <li><strong>Castling:</strong> Works as in standard chess but with simultaneous moves. The king moves two squares towards the rook, and the rook "jumps" over the king.</li>
+          <li><strong>En Passant:</strong> If a pawn moves two squares forward from its starting position, an enemy pawn can capture it as if it had moved only one square.</li>
+          <li><strong>Pawn Promotion:</strong> When a pawn reaches the opposite end of the board, it can be promoted to a queen, rook, bishop, or knight.</li>
+          <li><strong>King's Extra Move:</strong> In SyncChess, kings get an extra move when in check, allowing them to move twice in a row to escape danger.</li>
+        </ul>
+        
+        <h3>Timer System</h3>
+        <ul>
+          <li>Each player starts with their selected time on their clock.</li>
+          <li>Both players' timers run while they're deciding their moves.</li>
+          <li>When a player submits their move, their timer stops.</li>
+          <li>If one player has submitted but the other hasn't, only the second player's timer continues running.</li>
+          <li>After both players have submitted moves and the board updates, both timers restart for the next round.</li>
+          <li>If a player's time runs out, they lose the game.</li>
+        </ul>
+      </div>
+    </div>
+    
+    <footer>
+      <p>SyncChess &copy; 2025 - An innovative chess variant with simultaneous moves By. Max Carbunaru</p>
+    </footer>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/board.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+  
+  <!-- Additional UI controls script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Settings toggle
+      const settingsBtn = document.getElementById('settings-btn');
+      const settingsPanel = document.getElementById('settings-panel');
+      
+      if (settingsBtn && settingsPanel) {
+        settingsBtn.addEventListener('click', () => {
+          settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+        });
+      }
+      
+      // Rules toggle
+      const rulesBtn = document.getElementById('rules-btn');
+      const rulesContent = document.getElementById('rules-content');
+      
+      if (rulesBtn && rulesContent) {
+        rulesBtn.addEventListener('click', () => {
+          rulesContent.style.display = rulesContent.style.display === 'none' ? 'block' : 'none';
+        });
+      }
+      
+      // Reset button - no confirmation, use direct navigation to avoid browser prompt
+      const resetBtn = document.getElementById('resetBtn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          // This approach avoids the browser's built-in confirmation
+          window.location.href = window.location.href;
+        });
+      }
+      
+      // Hide settings panel when game starts
+      document.addEventListener('gameStarted', () => {
+        if (settingsPanel) {
+          settingsPanel.style.display = 'none';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
