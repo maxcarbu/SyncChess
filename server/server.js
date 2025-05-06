@@ -8,7 +8,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 
 const { createGameState } = require('./boardUtils');
-const { isLegalMove, isInCheck, checkTimerStatus, processMoves } = require('./gameLogic');
+const { isLegalMove, isInCheck, checkTimerStatus, processMoves, doesKingExist } = require('./gameLogic');
 
 // Set up Express server
 const app = express();
@@ -75,7 +75,8 @@ io.on('connection', (socket) => {
       timers: game.timers,
       castlingRights: game.castlingRights,
       enPassantTarget: game.enPassantTarget,
-      gameStarted: game.gameStarted
+      gameStarted: game.gameStarted,
+      gameResult: game.gameResult // Add this to handle rejoins during ongoing games
     });
     
     console.log(`🎨 Assigned ${color} to ${socket.id} in room ${roomId}`);
@@ -95,6 +96,11 @@ io.on('connection', (socket) => {
       // Send timer updates every second
       if (!games[roomId].timerInterval) {
         games[roomId].timerInterval = setInterval(() => {
+          // Don't update timers if the game is over
+          if (game.gameResult) {
+            return;
+          }
+          
           if (game.timerRunning) {
             // Check if time control is 0 (no time limit)
             if (game.timers.timeControl === 0) {
@@ -122,6 +128,9 @@ io.on('connection', (socket) => {
             let gameOver = false;
             
             if (game.timers.white <= 0) {
+              game.gameResult = 'blackWins';
+              game.timerRunning = false;
+              
               io.to(roomId).emit('gameState', {
                 inCheck: game.inCheck,
                 lastMovedPieces: game.lastMovedPieces,
@@ -131,6 +140,9 @@ io.on('connection', (socket) => {
               });
               gameOver = true;
             } else if (game.timers.black <= 0) {
+              game.gameResult = 'whiteWins';
+              game.timerRunning = false;
+              
               io.to(roomId).emit('gameState', {
                 inCheck: game.inCheck,
                 lastMovedPieces: game.lastMovedPieces,
@@ -142,8 +154,9 @@ io.on('connection', (socket) => {
             }
             
             if (gameOver) {
-              clearInterval(games[roomId].timerInterval);
-              game.timerRunning = false;
+              // Stop the timer interval when game is over
+              game.timers.whiteActive = false;
+              game.timers.blackActive = false;
             } else {
               // Just send timer updates
               io.to(roomId).emit('timerUpdate', game.timers);
@@ -279,9 +292,18 @@ io.on('connection', (socket) => {
       // Reset pending moves for next round
       game.pendingMoves = { white: null, black: null };
       
-      // For chess-style timer, activate both timers for the next round
-      game.timers.whiteActive = true;
-      game.timers.blackActive = true;
+      // Set timer status based on game result
+      if (result.gameResult) {
+        game.gameResult = result.gameResult;
+        game.timerRunning = false;
+        game.timers.whiteActive = false;
+        game.timers.blackActive = false;
+      } else {
+        // For chess-style timer, activate both timers for the next round
+        game.timers.whiteActive = true;
+        game.timers.blackActive = true;
+      }
+      
       game.timers.lastUpdate = Date.now();
       
       // Send updated board to both players
@@ -446,9 +468,18 @@ io.on('connection', (socket) => {
       // Reset pending moves for next round
       game.pendingMoves = { white: null, black: null };
       
-      // For chess-style timer, activate both timers for the next round
-      game.timers.whiteActive = true;
-      game.timers.blackActive = true;
+      // Set timer status based on game result
+      if (result.gameResult) {
+        game.gameResult = result.gameResult;
+        game.timerRunning = false;
+        game.timers.whiteActive = false;
+        game.timers.blackActive = false;
+      } else {
+        // For chess-style timer, activate both timers for the next round
+        game.timers.whiteActive = true;
+        game.timers.blackActive = true;
+      }
+      
       game.timers.lastUpdate = Date.now();
       
       // Send updated board to both players
@@ -497,7 +528,7 @@ io.on('connection', (socket) => {
 });
 
 // Start the server
-const PORT = process.env.PORT || 3025;
+const PORT = process.env.PORT || 3028;
 server.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });

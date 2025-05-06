@@ -42,7 +42,7 @@ function findKing(board, color) {
 // Check if a king is in check
 function isInCheck(board, color) {
   const kingSquare = findKing(board, color);
-  if (!kingSquare) return false;
+  if (!kingSquare) return false; // If king is not found (e.g., collision removed it), not in check
   
   const opponentColor = color === 'w' ? 'b' : 'w';
   return isSquareUnderAttack(board, kingSquare, opponentColor);
@@ -385,6 +385,14 @@ function isStalemate(board, color, gameState) {
 
 // Function to check which timers should be active
 function checkTimerStatus(game) {
+  // If the game is over, stop all timers
+  if (game.gameResult) {
+    game.timers.whiteActive = false;
+    game.timers.blackActive = false;
+    game.timerRunning = false;
+    return;
+  }
+  
   // If both players have submitted, neither timer is active
   if (game.pendingMoves.white && game.pendingMoves.black) {
     game.timers.whiteActive = false;
@@ -409,7 +417,12 @@ function checkTimerStatus(game) {
   }
 }
 
-// Process simultaneous moves - UPDATED with stalemate detection
+// Check if a king exists on the board
+function doesKingExist(board, color) {
+  return findKing(board, color) !== null;
+}
+
+// Process simultaneous moves
 function processMoves(game) {
   const whiteMove = game.pendingMoves.white;
   const blackMove = game.pendingMoves.black;
@@ -504,10 +517,32 @@ function processMoves(game) {
   
   // Handle special case: "Swerving" rule
   // If a piece was about to capture, but the target moved away, no capture happens
+  
   // Check for collision (both pieces moving to the same square)
+  let gameResult = null;
+  
   if (whiteMove.to === blackMove.to) {
     // Both pieces are removed in a collision
     console.log(`☄️ Collision at ${whiteMove.to}`);
+    
+    // Check if one of the pieces is a king
+    if (whitePiece && whitePiece[1] === 'K') {
+      // White king involved in collision, black wins
+      gameResult = 'blackWins';
+      console.log("White king eliminated in collision - Black wins!");
+    }
+    
+    if (blackPiece && blackPiece[1] === 'K') {
+      // Black king involved in collision, white wins
+      gameResult = 'whiteWins';
+      console.log("Black king eliminated in collision - White wins!");
+    }
+    
+    // If both kings collide, it's a draw
+    if (whitePiece && whitePiece[1] === 'K' && blackPiece && blackPiece[1] === 'K') {
+      gameResult = 'draw';
+      console.log("Both kings eliminated in collision - Draw!");
+    }
   } else {
     // Handle white's move (check if black piece swerved)
     if (board[whiteToCoords.rank][whiteToCoords.file] === blackPiece &&
@@ -607,21 +642,43 @@ function processMoves(game) {
   game.inCheck.white = isInCheck(newBoard, 'w');
   game.inCheck.black = isInCheck(newBoard, 'b');
   
-  // Check for checkmate
-  let gameResult = null;
-  if (game.inCheck.white && isCheckmate(newBoard, 'w', game)) {
-    gameResult = 'blackWins';
-  } else if (game.inCheck.black && isCheckmate(newBoard, 'b', game)) {
-    gameResult = 'whiteWins';
-  } else if (game.inCheck.white && game.inCheck.black &&
-            isCheckmate(newBoard, 'w', game) && isCheckmate(newBoard, 'b', game)) {
-    gameResult = 'draw';
+  // Check if kings exist (may have been removed by collision)
+  const whiteKingExists = doesKingExist(newBoard, 'w');
+  const blackKingExists = doesKingExist(newBoard, 'b');
+  
+  // If no result from collision, check for missing kings
+  if (!gameResult) {
+    if (!whiteKingExists && !blackKingExists) {
+      gameResult = 'draw';
+      console.log("Both kings missing - Draw!");
+    } else if (!whiteKingExists) {
+      gameResult = 'blackWins';
+      console.log("White king is missing - Black wins!");
+    } else if (!blackKingExists) {
+      gameResult = 'whiteWins';
+      console.log("Black king is missing - White wins!");
+    }
   }
   
-  // Check for stalemate
+  // If still no result, check for checkmate
   if (!gameResult) {
-    const whiteStalemated = !game.inCheck.white && isStalemate(newBoard, 'w', game);
-    const blackStalemated = !game.inCheck.black && isStalemate(newBoard, 'b', game);
+    if (game.inCheck.white && isCheckmate(newBoard, 'w', game)) {
+      gameResult = 'blackWins';
+      console.log("White is in checkmate - Black wins!");
+    } else if (game.inCheck.black && isCheckmate(newBoard, 'b', game)) {
+      gameResult = 'whiteWins';
+      console.log("Black is in checkmate - White wins!");
+    } else if (game.inCheck.white && game.inCheck.black &&
+              isCheckmate(newBoard, 'w', game) && isCheckmate(newBoard, 'b', game)) {
+      gameResult = 'draw';
+      console.log("Both kings in checkmate - Draw!");
+    }
+  }
+  
+  // If still no result, check for stalemate
+  if (!gameResult) {
+    const whiteStalemated = whiteKingExists && !game.inCheck.white && isStalemate(newBoard, 'w', game);
+    const blackStalemated = blackKingExists && !game.inCheck.black && isStalemate(newBoard, 'b', game);
     
     if (whiteStalemated && blackStalemated) {
       gameResult = 'draw';
@@ -633,6 +690,16 @@ function processMoves(game) {
       gameResult = 'draw';
       console.log("Draw by stalemate - black has no legal moves!");
     }
+  }
+  
+  // Store the game result
+  game.gameResult = gameResult;
+  
+  // If the game is over, stop all timers
+  if (gameResult) {
+    game.timerRunning = false;
+    game.timers.whiteActive = false;
+    game.timers.blackActive = false;
   }
   
   return {
@@ -649,5 +716,6 @@ module.exports = {
   isCheckmate,
   isStalemate,
   checkTimerStatus,
-  processMoves
+  processMoves,
+  doesKingExist
 };

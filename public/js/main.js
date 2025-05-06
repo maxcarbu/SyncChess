@@ -95,6 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize timer display
   updateTimerDisplay();
   updateTimeControlInfo(timers.timeControl);
+  
+  // Set initial status message
+  updateStatus('Waiting for both players to join...', false);
 });
 
 // Initialize socket.io connection
@@ -114,6 +117,45 @@ function initSocketConnection() {
   setupSocketHandlers();
 }
 
+// Helper function to get piece name from code
+function getPieceName(pieceType) {
+  switch (pieceType) {
+    case 'Q': return 'Queen';
+    case 'R': return 'Rook';
+    case 'B': return 'Bishop';
+    case 'N': return 'Knight';
+    default: return pieceType;
+  }
+}
+
+// Function to reset and redraw the board from a position
+function resetBoardFromPosition(position) {
+  if (!board || !position) return;
+  
+  // Create a normalized position for display
+  const displayPos = normalizeForDisplay(position);
+  
+  // Temporarily clear the board completely first
+  board.position('clear', false); // false means no animation
+  
+  // Then set the new position
+  board.position(displayPos, false); // false means no animation
+  
+  // After updating the board, set the full piece IDs as data attributes
+  // This helps track unique pieces for the game rules
+  setTimeout(() => {
+    updateDataPieceAttributes(position);
+    
+    // Show last moves after board is updated
+    showLastMoves();
+    
+    // If there's an en passant target, highlight it
+    if (enPassantTarget) {
+      $(`[data-square="${enPassantTarget}"]`).addClass('en-passant-target');
+    }
+  }, 10);
+}
+
 // Set up all the socket event handlers
 function setupSocketHandlers() {
   socket.on('playerColor', (color) => {
@@ -126,35 +168,17 @@ function setupSocketHandlers() {
   socket.on('boardState', (pos) => {
     console.log("New board state received:", pos);
     
-    // Store the full piece identifiers in the DOM
-    // and update the board with normalized piece codes
-    if (board) {
-      // Create a normalized position for display
-      const displayPos = normalizeForDisplay(pos);
-      
-      // Update the board with the normalized position
-      board.position(displayPos);
-      
-      // After updating the board, set the full piece IDs as data attributes
-      // This is a workaround since chessboard.js doesn't support custom piece IDs
-      setTimeout(() => {
-        updateDataPieceAttributes(pos);
-        
-        // Show last moves after board is updated
-        showLastMoves();
-        
-        // If there's an en passant target, highlight it
-        if (enPassantTarget) {
-          $(`[data-square="${enPassantTarget}"]`).addClass('en-passant-target');
-        }
-      }, 10);
-    }
+    // Use the new reset function to completely refresh the board
+    // This prevents visual artifacts from previous states
+    resetBoardFromPosition(pos);
   });
   
   socket.on('gameReady', (ready) => {
     gameReady = ready;
     if (ready) {
       updateStatus('Game ready! Both players connected. Make your move.');
+    } else {
+      updateStatus('Waiting for both players to join...');
     }
   });
   
@@ -230,7 +254,15 @@ function setupSocketHandlers() {
     // Enable/disable submit button
     const submitBtn = document.getElementById('submitBtn');
     if (submitBtn) {
-      submitBtn.disabled = !selectedMove;
+      submitBtn.disabled = !selectedMove || state.gameResult;
+    }
+    
+    // If no special message has been shown (like check or game result)
+    // and the game has started but we have no message, set a default one
+    if (!inCheck && !state.gameResult && state.gameStarted) {
+      if (document.getElementById('status').textContent === 'Waiting for both players to join...') {
+        updateStatus('Your turn! Select a piece to move.', false);
+      }
     }
   });
   
@@ -317,34 +349,14 @@ function setupSocketHandlers() {
     showPromotionDialog(square);
   });
   
-  // NEW: Add handler for promotion confirmation
+  // Updated handler for promotion confirmation
   socket.on('promotionConfirmed', (data) => {
-    // Update the UI to reflect the promotion choice while waiting for opponent
-    const square = data.square;
-    const pieceType = data.pieceType;
+    // Don't add a visual representation here - wait for the boardState update
+    // Just provide user feedback 
+    updateStatus(`Promoting to ${getPieceName(data.pieceType)}. Waiting for opponent...`, false);
     
-    // Create a temporary visual representation of the promoted piece
-    const squareElement = document.querySelector(`[data-square="${square}"]`);
-    if (squareElement) {
-      // Clear any existing piece
-      while (squareElement.firstChild) {
-        squareElement.removeChild(squareElement.firstChild);
-      }
-      
-      // Add the promoted piece visually
-      const pieceImg = document.createElement('img');
-      pieceImg.src = `https://chessboardjs.com/img/chesspieces/wikipedia/${myColor.charAt(0)}${pieceType}.png`;
-      pieceImg.className = 'chess-piece';
-      pieceImg.style.width = '100%';
-      pieceImg.style.height = '100%';
-      
-      squareElement.appendChild(pieceImg);
-      
-      // Play promotion sound
-      playSound('promotion');
-    }
-    
-    updateStatus('Promotion confirmed. Waiting for opponent...', false);
+    // Play promotion sound
+    playSound('promotion');
   });
 }
 
@@ -379,16 +391,18 @@ function setupEventListeners() {
   const resetBtn = document.getElementById('resetBtn');
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-      if (confirm('Are you sure you want to reset the game?')) {
-        location.reload();
-      }
+      window.location.href = window.location.href;
     });
   }
   
   // Toggle rules button
-  const toggleRulesBtn = document.getElementById('toggleRules');
-  if (toggleRulesBtn) {
-    toggleRulesBtn.addEventListener('click', toggleRules);
+  const rulesBtn = document.getElementById('rules-btn');
+  const rulesContent = document.getElementById('rules-content');
+  
+  if (rulesBtn && rulesContent) {
+    rulesBtn.addEventListener('click', () => {
+      rulesContent.style.display = rulesContent.style.display === 'none' ? 'block' : 'none';
+    });
   }
   
   // Copy room ID button
@@ -433,6 +447,23 @@ function setupEventListeners() {
     });
   }
   
+  // Settings button
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsPanel = document.getElementById('settings-panel');
+  
+  if (settingsBtn && settingsPanel) {
+    settingsBtn.addEventListener('click', () => {
+      settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+  
+  // Hide settings panel when game starts
+  document.addEventListener('gameStarted', () => {
+    if (settingsPanel) {
+      settingsPanel.style.display = 'none';
+    }
+  });
+  
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     // Submit move with Enter key
@@ -441,13 +472,13 @@ function setupEventListeners() {
     }
     
     // Show/hide rules with 'R' key
-    if ((e.key === 'r' || e.key === 'R') && toggleRulesBtn) {
-      toggleRulesBtn.click();
+    if ((e.key === 'r' || e.key === 'R') && rulesBtn) {
+      rulesBtn.click();
     }
   });
 }
 
-// Toggle rules display
+// Toggle rules display - legacy support
 function toggleRules() {
   const rulesContent = document.getElementById('rules-content');
   if (rulesContent) {
@@ -509,7 +540,7 @@ function applyGameSettings() {
   updateStatus('Settings applied. Waiting for game to start...', false);
 }
 
-// Show promotion dialog - FIXED with image buttons
+// Show promotion dialog - FIXED
 function showPromotionDialog(square) {
   // Disable the submit button while promoting
   const submitBtn = document.getElementById('submitBtn');
@@ -564,7 +595,7 @@ function showPromotionDialog(square) {
       moveSubmitted = true;
       
       // Update status
-      updateStatus('Pawn promoted to ' + piece + '. Waiting for opponent...');
+      updateStatus(`Promotion choice submitted: ${piece}. Waiting for server confirmation...`);
     });
     
     buttonContainer.appendChild(button);

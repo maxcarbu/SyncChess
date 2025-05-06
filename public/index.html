@@ -4,12 +4,459 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SyncChess - Simultaneous-Move Chess</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* Cool Homepage Styles */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Montserrat', sans-serif;
+      background-color: #0a0e17;
+      color: #e6e6e6;
+      line-height: 1.6;
+    }
+    
+    .home-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .background-pattern {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(10, 14, 23, 0.95), rgba(10, 14, 23, 0.95)),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231a2035' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      z-index: 1;
+      opacity: 0.9;
+      pointer-events: none;
+    }
+    
+    .background-shapes {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    
+    .shape {
+      position: absolute;
+      opacity: 0.15;
+      filter: blur(3px);
+    }
+    
+    .shape-knight {
+      width: 150px;
+      height: 150px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M19,22H5V20H19V22M17,10C15.58,10 14.26,10.77 13.55,12H13V8H15V6H13V4H15V2H7A2,2 0 0,0 5,4V16H13.55C14.26,17.23 15.58,18 17,18C19.21,18 21,16.21 21,14C21,11.79 19.21,10 17,10Z' /%3E%3C/svg%3E");
+      top: 15%;
+      left: 10%;
+    }
+    
+    .shape-pawn {
+      width: 120px;
+      height: 120px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M19,22H5V20H19V22M16,18H8L10,12H14L16,18M7,8V6H11V5H13V6H17V8H13V9H11V8H7Z' /%3E%3C/svg%3E");
+      top: 40%;
+      right: 10%;
+    }
+    
+    .shape-king {
+      width: 180px;
+      height: 180px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M19,22H5V20H19V22M17,4H15V5H17V4M17,9H15V10H17V9M5,4H7V5H5V4M5,9H7V10H5V9M12,4C12,3.45 11.55,3 11,3H9C8.45,3 8,3.45 8,4V10C8,10.55 8.45,11 9,11H11C11.55,11 12,10.55 12,10V4M18,3H14C13.45,3 13,3.45 13,4V10C13,10.55 13.45,11 14,11H18C18.55,11 19,10.55 19,10V4C19,3.45 18.55,3 18,3M18,8H16V6H18V8M6,3H2C1.45,3 1,3.45 1,4V10C1,10.55 1.45,11 2,11H6C6.55,11 7,10.55 7,10V4C7,3.45 6.55,3 6,3M6,8H4V6H6V8M12,11H8V16H16V11H12Z' /%3E%3C/svg%3E");
+      bottom: 10%;
+      left: 15%;
+    }
+    
+    .shape-queen {
+      width: 160px;
+      height: 160px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M18,3A2,2 0 0,1 20,5C20,5.81 19.5,6.5 18.83,6.82L17,13.15V18H7V13.15L5.17,6.82C4.5,6.5 4,5.81 4,5A2,2 0 0,1 6,3A2,2 0 0,1 8,5C8,5.5 7.82,5.95 7.5,6.3L10.3,9.35L10.83,5.62C10.33,5.26 10,4.67 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.67 13.67,5.26 13.17,5.62L13.7,9.35L16.5,6.3C16.18,5.95 16,5.5 16,5A2,2 0 0,1 18,3M5,20H19V22H5V20Z' /%3E%3C/svg%3E");
+      bottom: 25%;
+      right: 15%;
+    }
+    
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 100px 0 60px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 5rem;
+      margin-bottom: 10px;
+      color: #fff;
+      text-shadow: 0 0 20px rgba(120, 120, 255, 0.5);
+      position: relative;
+      z-index: 2;
+    }
+    
+    .tagline {
+      font-size: 1.5rem;
+      color: #a3b1c6;
+      margin-bottom: 40px;
+      font-weight: 400;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .glowing-accent {
+      height: 4px;
+      width: 100px;
+      background: linear-gradient(90deg, rgba(67,97,238,0), rgba(67,97,238,1), rgba(67,97,238,0));
+      margin: 5px auto 40px;
+      border-radius: 2px;
+      position: relative;
+      z-index: 2;
+      box-shadow: 0 0 20px rgba(67,97,238,0.8);
+    }
+    
+    /* Game Options */
+    .game-options {
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      max-width: 500px;
+      margin: 0 auto 60px;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .option-card {
+      background: linear-gradient(135deg, rgba(30, 41, 67, 0.8), rgba(18, 25, 41, 0.8));
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .option-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+    }
+    
+    .option-card h2 {
+      margin-top: 0;
+      color: #fff;
+      font-size: 1.6rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      position: relative;
+      padding-bottom: 12px;
+    }
+    
+    .option-card h2:after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 50px;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(67,97,238,1), rgba(67,97,238,0));
+      border-radius: 3px;
+    }
+    
+    .option-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .option-input {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background-color: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      font-size: 1em;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .option-input:focus {
+      outline: none;
+      border-color: rgba(67, 97, 238, 0.6);
+      box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+    }
+    
+    .cta-button {
+      background: linear-gradient(135deg, #4361ee, #3a0ca3);
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    }
+    
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(67, 97, 238, 0.5);
+    }
+    
+    .cta-button:active {
+      transform: translateY(1px);
+    }
+    
+    /* About Section */
+    .about-section {
+      max-width: 800px;
+      margin: 0 auto 50px;
+      background: rgba(30, 41, 67, 0.6);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      z-index: 2;
+    }
+    
+    .about-section h2 {
+      text-align: center;
+      color: #fff;
+      font-size: 2rem;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    
+    .about-section p {
+      color: #a3b1c6;
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+    }
+    
+    .about-section ul {
+      padding-left: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .about-section ul li {
+      color: #a3b1c6;
+      margin-bottom: 12px;
+      position: relative;
+    }
+    
+    .about-section ul li strong {
+      color: #4361ee;
+      font-weight: 600;
+    }
+    
+    .about-section center {
+      margin-top: 40px;
+    }
+    
+    /* Rules Section */
+    .rules-section {
+      max-width: 800px;
+      margin: 40px auto;
+      background: rgba(30, 41, 67, 0.6);
+      border-radius: 16px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.5s ease;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .rules-section.active {
+      padding: 40px;
+    }
+    
+    .rules-content h2 {
+      color: #fff;
+      font-size: 2rem;
+      margin-bottom: 25px;
+      font-weight: 600;
+      text-align: center;
+    }
+    
+    .rules-content h3 {
+      color: #4361ee;
+      font-size: 1.4rem;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      font-weight: 600;
+      border-bottom: 2px solid rgba(67, 97, 238, 0.3);
+      padding-bottom: 8px;
+    }
+    
+    .rules-content ul, .rules-content ol {
+      color: #a3b1c6;
+      padding-left: 25px;
+    }
+    
+    .rules-content ul li, .rules-content ol li {
+      margin-bottom: 12px;
+    }
+    
+    .rules-content strong {
+      color: #fff;
+      font-weight: 600;
+    }
+    
+    .rules-toggle-btn {
+      transition: all 0.3s ease;
+      background: #4361ee;
+      padding: 14px 28px;
+      font-size: 1.1rem;
+    }
+    
+    .rules-toggle-btn.active {
+      background: #e63946;
+    }
+
+    /* Chess piece animation */
+    .animated-pieces {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    .animated-piece {
+      position: absolute;
+      opacity: 0.08;
+      animation: float 15s infinite linear;
+    }
+    
+    .animated-piece:nth-child(1) {
+      top: 10%;
+      left: 5%;
+      width: 80px;
+      height: 80px;
+      animation-duration: 20s;
+      animation-delay: -2s;
+    }
+    
+    .animated-piece:nth-child(2) {
+      top: 70%;
+      left: 80%;
+      width: 60px;
+      height: 60px;
+      animation-duration: 25s;
+      animation-delay: -7s;
+    }
+    
+    .animated-piece:nth-child(3) {
+      top: 30%;
+      left: 85%;
+      width: 70px;
+      height: 70px;
+      animation-duration: 22s;
+      animation-delay: -12s;
+    }
+    
+    .animated-piece:nth-child(4) {
+      top: 60%;
+      left: 15%;
+      width: 65px;
+      height: 65px;
+      animation-duration: 18s;
+      animation-delay: -5s;
+    }
+    
+    .animated-piece:nth-child(5) {
+      top: 85%;
+      left: 50%;
+      width: 75px;
+      height: 75px;
+      animation-duration: 24s;
+      animation-delay: -9s;
+    }
+    
+    @keyframes float {
+      0% {
+        transform: translateY(0) rotate(0deg);
+      }
+      50% {
+        transform: translateY(-20px) rotate(180deg);
+      }
+      100% {
+        transform: translateY(0) rotate(360deg);
+      }
+    }
+    
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 30px 0;
+      color: #6c757d;
+      font-size: 0.9rem;
+      position: relative;
+      z-index: 2;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .logo {
+        font-size: 3.5rem;
+      }
+      
+      .tagline {
+        font-size: 1.2rem;
+      }
+      
+      .about-section, .rules-section.active {
+        padding: 25px;
+      }
+      
+      .hero {
+        padding: 60px 0 40px;
+      }
+    }
+  </style>
 </head>
 <body>
+  <!-- Background Pattern & Shapes -->
+  <div class="background-pattern"></div>
+  <div class="background-shapes">
+    <div class="shape shape-knight"></div>
+    <div class="shape shape-pawn"></div>
+    <div class="shape shape-king"></div>
+    <div class="shape shape-queen"></div>
+  </div>
+  
   <div class="home-container">
-    <h1 class="logo">SyncChess</h1>
-    <div class="tagline">A Chess Variant with Simultaneous Moves</div>
+    <div class="hero">
+      <!-- Animated Chess Pieces -->
+      <div class="animated-pieces">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M19,22H5V20H19V22M17,10C15.58,10 14.26,10.77 13.55,12H13V8H15V6H13V4H15V2H7A2,2 0 0,0 5,4V16H13.55C14.26,17.23 15.58,18 17,18C19.21,18 21,16.21 21,14C21,11.79 19.21,10 17,10Z' /%3E%3C/svg%3E" class="animated-piece" alt="Chess Knight">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M19,22H5V20H19V22M16,18H8L10,12H14L16,18M7,8V6H11V5H13V6H17V8H13V9H11V8H7Z' /%3E%3C/svg%3E" class="animated-piece" alt="Chess Pawn">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M18,3A2,2 0 0,1 20,5C20,5.81 19.5,6.5 18.83,6.82L17,13.15V18H7V13.15L5.17,6.82C4.5,6.5 4,5.81 4,5A2,2 0 0,1 6,3A2,2 0 0,1 8,5C8,5.5 7.82,5.95 7.5,6.3L10.3,9.35L10.83,5.62C10.33,5.26 10,4.67 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.67 13.67,5.26 13.17,5.62L13.7,9.35L16.5,6.3C16.18,5.95 16,5.5 16,5A2,2 0 0,1 18,3M5,20H19V22H5V20Z' /%3E%3C/svg%3E" class="animated-piece" alt="Chess Queen">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M19,22H5V20H19V22M17,4H15V5H17V4M17,9H15V10H17V9M5,4H7V5H5V4M5,9H7V10H5V9M12,4C12,3.45 11.55,3 11,3H9C8.45,3 8,3.45 8,4V10C8,10.55 8.45,11 9,11H11C11.55,11 12,10.55 12,10V4M18,3H14C13.45,3 13,3.45 13,4V10C13,10.55 13.45,11 14,11H18C18.55,11 19,10.55 19,10V4C19,3.45 18.55,3 18,3M18,8H16V6H18V8M6,3H2C1.45,3 1,3.45 1,4V10C1,10.55 1.45,11 2,11H6C6.55,11 7,10.55 7,10V4C7,3.45 6.55,3 6,3M6,8H4V6H6V8M12,11H8V16H16V11H12Z' /%3E%3C/svg%3E" class="animated-piece" alt="Chess King">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M21,5H3V3H21V5M19,11H5V9H19V11M21,19H3V17H21V19M19,15H5V13H19V15Z' /%3E%3C/svg%3E" class="animated-piece" alt="Chess Rook">
+      </div>
+      
+      <h1 class="logo">SyncChess</h1>
+      <div class="tagline">A Revolutionary Chess Variant with Simultaneous Moves</div>
+      <div class="glowing-accent"></div>
+    </div>
     
     <div class="game-options">
       <div class="option-card">
@@ -40,7 +487,7 @@
     
     <div class="about-section">
       <h2>About SyncChess</h2>
-      <p>SyncChess is an innovative chess variant where both players make their moves simultaneously, creating a unique strategic experience:</p>
+      <p>SyncChess is an innovative chess variant where both players make their moves simultaneously, creating a unique strategic experience that combines prediction, mind games, and classic chess skill.</p>
       <ul>
         <li><strong>Simultaneous Moves:</strong> Both players plan and submit their moves at the same time</li>
         <li><strong>No Repeating Pieces:</strong> Can't move the same piece twice in a row (with exceptions)</li>
@@ -49,9 +496,75 @@
         <li><strong>All Standard Chess Moves:</strong> Including castling, en passant, and more</li>
       </ul>
       <p>Test your prediction skills and chess knowledge in this exciting variant!</p>
-      <center><button id="learn-more-btn" class="cta-button">Learn the Rules</button></center>
+      <center><button id="learn-more-btn" class="cta-button rules-toggle-btn">Learn the Rules</button></center>
+    </div>
+    
+    <!-- Rules section that toggles visibility -->
+    <div id="rules-section" class="rules-section">
+      <div class="rules-content">
+        <h2>SyncChess Rules</h2>
+        
+        <h3>Core Rules</h3>
+        <ol>
+          <li><strong>Simultaneous Moves</strong>
+            <ul>
+              <li>Both players submit their moves at the same time.</li>
+              <li>There are no turns; each round consists of one move per player, executed simultaneously.</li>
+            </ul>
+          </li>
+          <li><strong>No Repeating the Same Piece</strong>
+            <ul>
+              <li>A piece cannot be moved two turns in a row.</li>
+              <li>Exception: the king can move multiple times in a row if it is in check or there are no other legal moves.</li>
+            </ul>
+          </li>
+          <li><strong>"Swerving" Rule (Special Capture Rule)</strong>
+            <ul>
+              <li>If a piece tries to capture an enemy piece, but that piece moves away in the same turn, no capture occurs.</li>
+              <li>Both pieces simply move to their new destinations as if nothing happened.</li>
+            </ul>
+          </li>
+          <li><strong>Collision Rule</strong>
+            <ul>
+              <li>If two pieces move to the same square at the same time, both are removed from the board.</li>
+            </ul>
+          </li>
+        </ol>
+        
+        <h3>Check & Checkmate</h3>
+        <ul>
+          <li>A king cannot move into a square that is already under threat at the start of the turn (classic illegal move).</li>
+          <li>However, if a king ends up in check due to the opponent's simultaneous move, that's allowed.</li>
+          <li>If a player is in check, they must get out of it on their next move.</li>
+          <li>If both kings are in check at the same time, both players must escape check next turn.</li>
+          <li>If a player delivers checkmate, the game ends immediately, even if that player also ends up in check on the same turn.</li>
+          <li>If both players deliver checkmate at the same time, the game ends in a draw.</li>
+        </ul>
+        
+        <h3>Special Moves</h3>
+        <ul>
+          <li><strong>Castling:</strong> Works as in standard chess but with simultaneous moves. The king moves two squares towards the rook, and the rook "jumps" over the king.</li>
+          <li><strong>En Passant:</strong> If a pawn moves two squares forward from its starting position, an enemy pawn can capture it as if it had moved only one square.</li>
+          <li><strong>Pawn Promotion:</strong> When a pawn reaches the opposite end of the board, it can be promoted to a queen, rook, bishop, or knight.</li>
+          <li><strong>King's Extra Move:</strong> In SyncChess, kings get an extra move when in check, allowing them to move twice in a row to escape danger.</li>
+        </ul>
+        
+        <h3>Timer System</h3>
+        <ul>
+          <li>Each player starts with their selected time on their clock.</li>
+          <li>Both players' timers run while they're deciding their moves.</li>
+          <li>When a player submits their move, their timer stops.</li>
+          <li>If one player has submitted but the other hasn't, only the second player's timer continues running.</li>
+          <li>After both players have submitted moves and the board updates, both timers restart for the next round.</li>
+          <li>If a player's time runs out, they lose the game.</li>
+        </ul>
+      </div>
     </div>
   </div>
+  
+  <footer>
+    <p>SyncChess &copy; 2025 - An innovative chess variant with simultaneous moves</p>
+  </footer>
   
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -76,10 +589,30 @@
         }
       });
       
-      // Learn more button
-      document.getElementById('learn-more-btn').addEventListener('click', () => {
-        // Show rules on the game page
-        window.location.href = 'game?rules=show';
+      // Learn more button - toggle rules display
+      const learnMoreBtn = document.getElementById('learn-more-btn');
+      const rulesSection = document.getElementById('rules-section');
+      
+      learnMoreBtn.addEventListener('click', () => {
+        // Toggle the rules section visibility
+        if (rulesSection.classList.contains('active')) {
+          rulesSection.classList.remove('active');
+          rulesSection.style.height = '0';
+          rulesSection.style.padding = '0';
+          learnMoreBtn.textContent = 'Learn the Rules';
+          learnMoreBtn.classList.remove('active');
+        } else {
+          rulesSection.classList.add('active');
+          rulesSection.style.height = 'auto';
+          rulesSection.style.padding = '40px';
+          learnMoreBtn.textContent = 'Hide Rules';
+          learnMoreBtn.classList.add('active');
+          
+          // Smooth scroll to the rules section
+          setTimeout(() => {
+            rulesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
       });
     });
   </script>
